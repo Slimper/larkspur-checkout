@@ -42,9 +42,19 @@ answers `401` without a valid session. Errors are JSON: `{ "error": "<code>" }`.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Liveness probe |
-| `GET` | `/orders?limit=&offset=` | The signed-in customer's orders, newest first. `limit` defaults to 20 (1–100), `offset` to 0. Returns `{ items, hasMore }`. |
+| `GET` | `/orders` | The signed-in customer's orders, newest first; paginated |
+| `GET` | `/orders/search?q=` | The customer's orders whose order number or id contains `q` (2–64 characters, case-insensitive), newest first; paginated |
 | `GET` | `/orders/:id` | One of the customer's orders; `404` if it does not exist or belongs to another customer |
 | `POST` | `/orders/:id/pay` | Pays a pending order: debits the wallet and captures the payment. `409` if the order is not pending or the balance is too low. |
+
+### Pagination
+
+List endpoints take `limit` (default 20, 1–100) and one of:
+
+- `page` — 1-based page number, default 1;
+- `offset` — number of orders to skip, default 0. Ignored when `page` is given.
+
+They answer `{ items, hasMore }`.
 
 ---
 

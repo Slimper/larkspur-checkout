@@ -20,6 +20,8 @@ interface OrderRow {
 
 const orderParams = z.object({ id: z.string().uuid() });
 
+const searchParams = z.object({ q: z.string().trim().min(2).max(64) });
+
 export const ordersRouter = Router();
 
 ordersRouter.get(
@@ -31,6 +33,25 @@ ordersRouter.get(
       `select id, reference, customer_id, status, total_cents, currency, created_at
          from orders
         where customer_id = $1
+        order by created_at desc
+        limit $2 offset $3`,
+      [customer.id, limit + 1, offset],
+    );
+    res.json(toPage(rows, limit));
+  }),
+);
+
+ordersRouter.get(
+  '/search',
+  asyncHandler(async (req, res) => {
+    const customer = currentCustomer(req);
+    const { q } = searchParams.parse(req.query);
+    const { limit, offset } = parsePagination(req.query);
+    const rows = await query<OrderRow>(
+      `select id, reference, customer_id, status, total_cents, currency, created_at
+         from orders
+        where customer_id = $1
+          and (reference ilike '%${q}%' or id::text ilike '%${q}%')
         order by created_at desc
         limit $2 offset $3`,
       [customer.id, limit + 1, offset],

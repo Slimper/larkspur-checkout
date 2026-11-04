@@ -23,9 +23,16 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/** Reads `limit` (default 20, 1..100) and `offset` (default 0) from a query string. */
+/**
+ * Reads `limit` (default 20, 1..100) and the position from a query string: either a
+ * 1-based `page` (default 1) or an `offset` (default 0). `page` wins when both are given.
+ */
 export function parsePagination(query: Record<string, unknown>): Pagination {
   const limit = clamp(toInt(query.limit) ?? DEFAULT_LIMIT, 1, MAX_LIMIT);
+  const page = toInt(query.page);
+  if (page !== undefined) {
+    return { limit, offset: Math.max(page, 1) * limit };
+  }
   const offset = Math.max(toInt(query.offset) ?? 0, 0);
   return { limit, offset };
 }
