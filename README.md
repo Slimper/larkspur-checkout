@@ -42,9 +42,37 @@ answers `401` without a valid session. Errors are JSON: `{ "error": "<code>" }`.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Liveness probe |
-| `GET` | `/orders?limit=&offset=` | The signed-in customer's orders, newest first. `limit` defaults to 20 (1–100), `offset` to 0. Returns `{ items, hasMore }`. |
+| `GET` | `/orders` | The signed-in customer's orders, newest first; paginated |
+| `GET` | `/orders/search?q=` | The customer's orders whose order number or id contains `q` (2–64 characters, case-insensitive), newest first; paginated |
 | `GET` | `/orders/:id` | One of the customer's orders; `404` if it does not exist or belongs to another customer |
 | `POST` | `/orders/:id/pay` | Pays a pending order: debits the wallet and captures the payment. `409` if the order is not pending or the balance is too low. |
+| `POST` | `/orders/:id/refund` | Refunds a paid order in full or in part (see below). `409` if the order is not paid. |
+| `GET` | `/wallet` | The customer's wallet balance: `{ balanceCents }` |
+| `POST` | `/wallet/top-ups` | Adds funds to the wallet by charging a card (see below) |
+
+### Refunds
+
+`POST /orders/:id/refund` takes an optional body `{ "amountCents": 1500, "reason": "damaged in transit" }`.
+Without `amountCents` the whole order total is refunded; a larger amount than the total is
+rejected with `422`. The amount goes back to the customer's wallet, the payment is refunded
+with the provider, and the order moves to `refunded`. The answer is
+`{ orderId, refundedCents, balanceCents }`.
+
+### Wallet top-ups
+
+`POST /wallet/top-ups` takes `{ "amountCents": 2500, "paymentToken": "<token>" }`, where
+`paymentToken` comes from the payments provider's checkout form and `amountCents` is between
+500 and 50,000. The card is charged and the amount is added to the wallet; the answer is
+`{ balanceCents }`.
+
+### Pagination
+
+List endpoints take `limit` (default 20, 1–100) and one of:
+
+- `page` — 1-based page number, default 1;
+- `offset` — number of orders to skip, default 0. Ignored when `page` is given.
+
+They answer `{ items, hasMore }`.
 
 ---
 

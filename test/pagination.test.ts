@@ -21,6 +21,14 @@ describe('parsePagination', () => {
     expect(parsePagination({ offset: '-5' }).offset).toBe(0);
     expect(parsePagination({ offset: '40' }).offset).toBe(40);
   });
+
+  it('derives the offset from page', () => {
+    expect(parsePagination({ page: '3', limit: '10' })).toEqual({ limit: 10, offset: 30 });
+  });
+
+  it('prefers page over offset', () => {
+    expect(parsePagination({ page: '2', offset: '5' }).offset).toBe(40);
+  });
 });
 
 describe('toPage', () => {

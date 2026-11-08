@@ -36,3 +36,48 @@ export async function capturePayment(orderId: string, amountCents: number): Prom
   const capture = (await response.json()) as ProviderObject;
   return capture.id;
 }
+
+/**
+ * Charges the card behind a payment token from the provider's checkout form and returns the
+ * charge id. Tokens are single-use, so the provider rejects a second charge with the same token.
+ */
+export async function chargeCard(paymentToken: string, amountCents: number): Promise<string> {
+  logger.info({ amountCents }, 'charging card');
+  const response = await fetch(`${config.paymentsBaseUrl}/charges`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.paymentsApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ source: paymentToken, amount_cents: amountCents }),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new PaymentProviderError(response.status);
+  }
+  const charge = (await response.json()) as ProviderObject;
+  return charge.id;
+}
+
+/** Refunds a captured payment in full or in part and returns the provider's refund id. */
+export async function refundPayment(providerRef: string, amountCents: number): Promise<string> {
+  const url = `${config.paymentsBaseUrl}/captures/${encodeURIComponent(providerRef)}/refunds`;
+  const headers = {
+    Authorization: `Bearer ${config.paymentsApiKey}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': `refund-${providerRef}`,
+  };
+  const body = { amount_cents: amountCents };
+  logger.info({ url, headers, body }, 'sending refund to payments provider');
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new PaymentProviderError(response.status);
+  }
+  const refund = (await response.json()) as ProviderObject;
+  return refund.id;
+}
